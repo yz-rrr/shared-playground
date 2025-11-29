@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文法構造演習</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+    <h1 id="pageTitle">読み込み中...</h1>
+    
+    <div style="text-align:center; margin-bottom:10px;">
+        <a href="./index.html" style="font-size:0.9rem;">← メニューに戻る</a>
+    </div>
+
+    <div class="controls">
+        <div class="level-group">
+            <button class="level-btn active" onclick="app.setDifficulty(1)">Level 1</button>
+            <button class="level-btn" onclick="app.setDifficulty(2)">Level 2</button>
+            <button class="level-btn" onclick="app.setDifficulty(3)">Level 3</button>
+        </div>
+        <div class="mode-group"></div>
+    </div>
+
+    <div id="messageArea"></div>
+
+    <div class="table-container">
+        <table id="quizTable"></table>
+    </div>
+
+    <div class="btn-container">
+        <button id="checkBtn" class="action-btn" onclick="app.checkAnswers()">答え合わせ</button>
+        <button id="retryBtn" class="action-btn hidden" onclick="app.resetQuiz()">もう一回</button>
+    </div>
+
+    <script src="./app.js"></script>
+
+    <script>
+        // 助動詞の疑問文データ
+        // 考え方：表の列を「文のパーツ」に見立てる
+        const grammarData = {
+            title: "助動詞の疑問文・関係代名詞",
+            
+            allColHeaders: ["文頭(助動詞/WH)", "主語", "動詞", "その他", "修飾/関係詞節"],
+            rowHeaders: [
+                "Can (能力)", 
+                "Will (未来)", 
+                "Should (義務)", 
+                "関係代名詞 (人)", 
+                "関係代名詞 (物)"
+            ],
+            
+            allData: [
+                ["Can",   "you",  "play",  "the piano?", "-"],
+                ["Will",  "he",   "come",  "tomorrow?",  "-"],
+                ["Should","I",    "finish","it now?",    "-"],
+                // 関係代名詞の例: The man [who] lives here is kind.
+                // 表形式だと少し工夫が必要ですが、要素分解すればいけます
+                ["The man", "who", "lives", "here", "is kind"],
+                ["The book","which","I",    "bought", "is interesting"]
+            ],
+            
+            disableModeSelection: true
+        };
+
+        app.init(grammarData);
+    </script>
+</body>
+</html>
