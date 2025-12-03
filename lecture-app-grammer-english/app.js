@@ -1,6 +1,6 @@
 /**
  * 共通クイズエンジン
- * どのHTMLファイルから呼ばれても、渡された config に基づいて動作します。
+ * どのHTMLファイルから呼ばれても、渡された config に基づいて動作する。
  */
 const app = (function() {
     
@@ -208,10 +208,15 @@ const app = (function() {
         getEl('checkBtn').classList.add('hidden');
         getEl('retryBtn').classList.remove('hidden');
 
-        if (correctCount === totalCount) {
+        if (correctCount >= (totalCount - 1)) {
             const msgArea = getEl('messageArea');
-            msgArea.textContent = "🎉 Perfect!! 全問正解です！ 🎉";
-            msgArea.className = 'msg-success';
+            if (correctCount === totalCount) {
+                msgArea.textContent = "🎉 Perfect!! 全問正解です！ 🎉";
+                msgArea.className = 'msg-success';
+            } else if (totalCount >= 2 && correctCount === (totalCount - 1)) {
+                msgArea.textContent = "惜しい！ あと1問です！";
+                msgArea.className = 'msg-veryclose';
+            }
             msgArea.style.display = 'block';
         }
     }
