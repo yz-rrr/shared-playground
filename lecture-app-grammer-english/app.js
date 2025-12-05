@@ -4,33 +4,51 @@
  */
 const app = (function() {
     
-    // 状態管理
-    let config = null; 
-    let currentLevel = 2;
-    let currentMode = 'basic'; 
+    // ============================================================
+    // 1. 状態管理変数
+    // ============================================================
+    let config = null; // init時にセットされる設定オブジェクト
+    let currentLevel = 2; // 現在の難易度 (1, 2, 3)
+    let currentMode = 'basic'; // 現在のモード ('basic' or 'full')
+    
+    // 難易度ごとの穴埋め率設定
     let difficultyRates = { 1: 0.15, 2: 0.35, 3: 0.60 };
 
-    // 新規追加: 表示行数の管理
+    // 表示行数の管理 (0 = 全件表示)
     let currentRowCount = 0; 
-    const STORAGE_KEY_PREFIX = 'quiz_last_rows_'; 
+    const STORAGE_KEY_PREFIX = 'quiz_last_rows_'; // LocalStorageキーの接頭辞
 
-    // 現在表示している行インデックスを保持する変数
+    // ★追加: 現在表示している行インデックスを保持する変数
+    // 「同じ問題でもう一回」の機能のために、今の問題番号を記憶しておく
     let currentRowIndices = [];
 
+    // DOM要素取得のヘルパー
     const getEl = (id) => document.getElementById(id);
 
+    // ============================================================
+    // 2. 初期化と設定変更
+    // ============================================================
+
+    /**
+     * アプリ初期化
+     * 各HTMLページ固有の設定(config)を受け取り、画面を構築する
+     */
     function init(userConfig) {
         config = userConfig;
         
+        // ページタイトルの設定
         const titleEl = getEl('pageTitle');
         if(titleEl) titleEl.textContent = config.title;
 
+        // モード切替UIの制御 (configで無効化されている場合は隠す)
         const modeGroup = document.querySelector('.mode-group');
         if (config.disableModeSelection && modeGroup) {
             modeGroup.style.display = 'none';
+            // モード選択が無効な場合、設定があればbasicColCountに従うか、なければ全表示
             currentMode = config.basicColCount ? 'basic' : 'full';
         }
 
+        // 行数制限UIの制御 (verbs.html などで使用)
         const rowLimitGroup = document.querySelector('.row-limit-group');
         if (config.enableRowSelection) {
             if (rowLimitGroup) rowLimitGroup.style.display = 'flex';
@@ -41,19 +59,30 @@ const app = (function() {
             currentRowCount = 0; 
         }
 
-        // 最初は「次の問題」として開始
+        // 最初は「新しい問題」としてクイズを開始
         resetQuiz(false);
     }
 
+    /**
+     * 難易度の変更
+     */
     function setDifficulty(level) {
         currentLevel = level;
+        
+        // ボタンの見た目を更新
         document.querySelectorAll('.level-btn').forEach((btn, index) => {
             if (index + 1 === level) btn.classList.add('active');
             else btn.classList.remove('active');
         });
+
+        // 難易度変更時は、今の単語セットを維持したまま穴埋め箇所を変える
+        // (true = 同じ行データを使う)
         resetQuiz(true);
     }
 
+    /**
+     * モード（列数）の変更
+     */
     function changeMode() {
         const radios = document.getElementsByName('mode');
         for (const radio of radios) {
@@ -62,15 +91,23 @@ const app = (function() {
                 break;
             }
         }
+        // モード変更時も同じ単語セットを維持
         resetQuiz(true); 
     }
 
+    /**
+     * 出題数（行数）の変更
+     */
     function setRowCount(count) {
         currentRowCount = count;
         updateRowCountUI();
+        // 件数変更時は、新しく選び直す必要があるため false
         resetQuiz(false); 
     }
 
+    /**
+     * 出題数ボタンの見た目を更新
+     */
     function updateRowCountUI() {
         document.querySelectorAll('.row-count-btn').forEach(btn => {
             const val = parseInt(btn.dataset.count, 10);
@@ -79,63 +116,93 @@ const app = (function() {
         });
     }
 
+    // ============================================================
+    // 3. ロジックコア (出題範囲の決定)
+    // ============================================================
+
     /**
      * 表示すべき行データのインデックス配列を計算する
+     * localStorageを使って「前回表示していない問題」を優先するロジック
      */
     function selectRowIndices(totalDataLength) {
+        // 行数制限なし(0) または データ総数が制限以下の場合は全件表示
         if (currentRowCount === 0 || totalDataLength <= currentRowCount) {
             return [...Array(totalDataLength).keys()];
         }
 
-        const v = currentRowCount;
+        const v = currentRowCount; // 表示したい数
+        // IDが未設定の場合はタイトルを使う（キー被り防止のためHTML側でID設定推奨）
         const storageKey = STORAGE_KEY_PREFIX + (config.id || config.title); 
         
+        // 前回表示したインデックスを取得
         let lastShownIndices = [];
         try {
             const saved = localStorage.getItem(storageKey);
             if (saved) lastShownIndices = JSON.parse(saved);
-        } catch (e) { console.warn("Storage access limited:", e); }
+        } catch (e) { 
+            // プライベートモード等でアクセス拒否された場合はエラーログだけ出して続行
+            console.warn("Storage access limited:", e); 
+        }
 
         const allIndices = [...Array(totalDataLength).keys()];
+        
+        // 「今表示していない問題」(Hidden) の特定
         const hiddenIndices = allIndices.filter(idx => !lastShownIndices.includes(idx));
         const h = hiddenIndices.length;
 
         let selectedIndices = [];
 
+        // --- 優先表示ロジック ---
         if (h === v) {
+            // ケースa: 未表示数がピッタリなら、それを全て表示
             selectedIndices = [...hiddenIndices];
         } else if (h < v) {
+            // ケースb: 未表示数が足りない場合
+            // まず未表示分を全部入れ、足りない分(needed)を既出問題からランダム補充
             selectedIndices = [...hiddenIndices];
             const needed = v - h;
             const shuffledLast = [...lastShownIndices].sort(() => 0.5 - Math.random());
             selectedIndices = selectedIndices.concat(shuffledLast.slice(0, needed));
         } else {
+            // ケースc: 未表示数が多すぎる場合
+            // 未表示分の中からランダムに v 個選ぶ
             const shuffledHidden = [...hiddenIndices].sort(() => 0.5 - Math.random());
             selectedIndices = shuffledHidden.slice(0, v);
         }
 
+        // 今回の選択結果を保存
         try {
             localStorage.setItem(storageKey, JSON.stringify(selectedIndices));
         } catch (e) {}
 
+        // インデックス順（元の辞書順など）にソートして返す
         return selectedIndices.sort((a, b) => a - b);
     }
 
+    // ============================================================
+    // 4. クイズ生成 (描画)
+    // ============================================================
+
+    /**
+     * クイズをリセット・再描画する
+     * @param {boolean} isRetrySame - trueなら現在の問題セットを維持、falseなら新しく選び直す
+     */
     function resetQuiz(isRetrySame = false) {
         const msgArea = getEl('messageArea');
         msgArea.style.display = 'none';
         msgArea.className = '';
         msgArea.textContent = '';
         
-        // --- ボタン表示のリセット（すべて隠す） ---
+        // --- ボタン表示のリセット（すべて隠す初期化） ---
         const checkBtn = getEl('checkBtn');
         if(checkBtn) checkBtn.classList.remove('hidden');
         
-        // ★修正ポイント: retryBtn が存在する場合のみ操作する
+        // ★修正: 存在確認をしてから hidden を追加（エラー防止）
+        // 既存の練習ページ用ボタン
         const retryBtn = getEl('retryBtn');
         if (retryBtn) retryBtn.classList.add('hidden');
         
-        // 新しい2つのボタンも存在確認してから操作
+        // 新しい拡張ページ用ボタン
         const retrySameBtn = getEl('retrySameBtn');
         if (retrySameBtn) retrySameBtn.classList.add('hidden');
         const nextBtn = getEl('nextBtn');
@@ -145,6 +212,7 @@ const app = (function() {
         const table = getEl('quizTable');
         table.textContent = ''; 
 
+        // 表示する列数の決定
         let colCount;
         if (config.disableModeSelection) {
             colCount = config.allColHeaders.length;
@@ -154,8 +222,9 @@ const app = (function() {
                        : config.allColHeaders.length;
         }
         
+        // テーブルヘッダー生成
         const thead = document.createElement('tr');
-        thead.appendChild(document.createElement('th')); 
+        thead.appendChild(document.createElement('th')); // 左上の空セル
         for (let i = 0; i < colCount; i++) {
             const th = document.createElement('th');
             th.textContent = config.allColHeaders[i];
@@ -163,13 +232,17 @@ const app = (function() {
         }
         table.appendChild(thead);
 
+        // --- データ行の選定 ---
         let targetIndices;
         
+        // ★ロジック: 同じ問題を再利用するか、新しく選ぶか
         if (isRetrySame && currentRowIndices.length > 0) {
+            // 同じ行インデックスを再利用（穴埋め位置だけランダムで変わる）
             targetIndices = currentRowIndices;
         } else {
+            // 新しく選定（localStorage更新も走る）
             targetIndices = selectRowIndices(config.allData.length);
-            currentRowIndices = targetIndices; 
+            currentRowIndices = targetIndices; // 次回のために記憶
         }
 
         const rate = difficultyRates[currentLevel];
@@ -177,6 +250,7 @@ const app = (function() {
         let totalBlanks = 0;
         let attempts = 0;
 
+        // 穴埋め生成ループ（最低でも2箇所の穴ができるまで試行）
         do {
             tableRows = [];
             totalBlanks = 0;
@@ -210,6 +284,7 @@ const app = (function() {
                     });
                 }
 
+                // 詰み防止: 行すべてが空欄になってしまったら1つ開ける
                 if (rowBlankCount === quizTargetCount && quizTargetCount > 0) {
                      const blankIndices = rowCells
                         .map((cell, idx) => cell.isBlank ? idx : -1)
@@ -225,14 +300,18 @@ const app = (function() {
             
         } while (totalBlanks < 2 && attempts < 100);
 
+        // HTML描画
         tableRows.forEach((rowCells) => {
             const originalRIndex = rowCells[0].r;
             const tr = document.createElement('tr');
+            
+            // 行ヘッダー
             const rowHead = document.createElement('td');
             rowHead.classList.add('row-header');
             rowHead.textContent = config.rowHeaders[originalRIndex];
             tr.appendChild(rowHead);
 
+            // データセル
             rowCells.forEach(cell => {
                 const td = document.createElement('td');
                 if (cell.text === "-") {
@@ -252,11 +331,16 @@ const app = (function() {
             table.appendChild(tr);
         });
 
+        // 最初の入力欄にフォーカス（PCのみ）
         const firstInput = table.querySelector('input[type="text"]');
         if (firstInput && window.innerWidth > 600) { 
             firstInput.focus(); 
         }
     }
+
+    // ============================================================
+    // 5. 答え合わせ処理
+    // ============================================================
 
     function checkAnswers() {
         const inputs = document.querySelectorAll('input[type="text"]');
@@ -274,12 +358,14 @@ const app = (function() {
 
             input.disabled = true;
 
+            // 正誤判定（大文字小文字無視）
             if (userVal.toLowerCase() === correctVal.toLowerCase()) {
                 parentTd.textContent = correctVal; 
                 parentTd.classList.add('correct-cell');
                 correctCount++;
             } else {
                 parentTd.classList.add('incorrect-cell');
+                // 正解を表示
                 const hint = document.createElement('div');
                 hint.classList.add('answer-hint');
                 hint.textContent = `(${correctVal})`;
@@ -287,19 +373,24 @@ const app = (function() {
             }
         });
 
+        // 「答え合わせ」ボタンを隠す
         getEl('checkBtn').classList.add('hidden');
         
-        // ボタンの表示制御
+        // ★修正: ページ構成に応じて適切な「リトライボタン」を表示する
         const retrySameBtn = getEl('retrySameBtn');
         const nextBtn = getEl('nextBtn');
+
         if (retrySameBtn && nextBtn) {
+            // verbs.html のように2つのボタンがある場合
             retrySameBtn.classList.remove('hidden');
             nextBtn.classList.remove('hidden');
         } else {
+            // practice.html のように1つしかボタンがない場合
             const retryBtn = getEl('retryBtn');
             if (retryBtn) retryBtn.classList.remove('hidden');
         }
 
+        // メッセージ表示
         if (correctCount >= (totalCount - 1)) {
             const msgArea = getEl('messageArea');
             if (correctCount === totalCount) {
@@ -313,5 +404,6 @@ const app = (function() {
         }
     }
 
+    // 外部に公開するメソッド
     return { init, setDifficulty, changeMode, setRowCount, resetQuiz, checkAnswers };
 })();
