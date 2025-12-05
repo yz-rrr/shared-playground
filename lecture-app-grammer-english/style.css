@@ -181,17 +181,17 @@ button.action-btn {
 #checkBtn { background-color: #20c997; color: #fff; }
 #checkBtn:hover { background-color: #1aa179; }
 
-/* 次の問題：深い青（ネイビー寄り） */
-#nextBtn, #retryBtn { background-color: #4a6fb5; color: #fff; }
-#nextBtn:hover, #retryBtn:hover  { background-color: #3b5994; }
+/* 次の問題：青 */
+#nextBtn, #retryBtn { background-color: #5a67c5; color: #fff; }
+#nextBtn:hover, #retryBtn:hover  { background-color: #4b66a4; }
 
-/* 同じ問題：落ち着いたマスタード（オリーブより明るく） */
+/* 同じ問題：落ち着いたマスタード */
 #retrySameBtn {
-    background-color: #c69500; /* 深い黄色に変更 */
+    background-color: #e6a530; /* 深い黄色に変更 */
     color: #fff;               /* 文字は白 */
 }
 #retrySameBtn:hover {
-    background-color: #a07800; /* ホバー時はさらに暗く */
+    background-color: #b09800; /* ホバー時はさらに暗く */
 }
 
 .hidden { display: none; }
