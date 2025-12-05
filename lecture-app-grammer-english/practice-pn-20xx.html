@@ -42,256 +42,35 @@
         ページの再読み込み（リロード）で空欄は再配置されます。<br>
         Levelが上がると空欄が作られやすくなるように設定しています。
     </div>
-
-<script>
-    /**
-     * アプリケーションロジックをカプセル化し、グローバル汚染を防ぐ
-     */
-    const app = (function() {
-        
-        // --- 設定データ ---
-        // 改行は \n で表現し、CSSの white-space: pre-line で反映させる
-        // ここを見ている人は仲間
-        const config = {
-            title: "人称代名詞 演習",
-            allColHeaders: ["主格", "目的格", "所有格", "所有代名詞", "再帰代名詞"],
-            rowHeaders: [
-                "1人称 単数", "2人称 単数", "3人称 単数（男性）", "3人称 単数（女性）", "3人称 単数（物・事）",
-                "1人称 複数", "2人称 複数", "3人称 複数"
-            ],
-            allData: [
-                ["I",    "me",   "my",    "mine",   "myself"],
-                ["you",  "you",  "your",  "yours",  "yourself"],
-                ["he",   "him",  "his",   "his",    "himself"],
-                ["she",  "her",  "her",   "hers",   "herself"],
-                ["it",   "it",   "its",   "-",      "itself"],
-                ["we",   "us",   "our",   "ours",   "ourselves"],
-                ["you",  "you",  "your",  "yours",  "yourselves"],
-                ["they", "them", "their", "theirs", "themselves"]
-            ]
-        };
-
-        const difficultyRates = {
-            1: 0.15, // 少し上げる(詰み防止ロジックが入るため)
-            2: 0.35, 
-            3: 0.60  
-        };
-
-        let currentLevel = 1;
-        let currentMode = 'basic'; 
-
-        // --- DOM要素取得ヘルパー ---
-        const getEl = (id) => document.getElementById(id);
-
-        function init() {
-            getEl('pageTitle').textContent = config.title;
-            resetQuiz();
-        }
-
-        function setDifficulty(level) {
-            currentLevel = level;
-            document.querySelectorAll('.level-btn').forEach((btn, index) => {
-                if (index + 1 === level) {
-                    btn.classList.add('active');
-                } else {
-                    btn.classList.remove('active');
-                }
-            });
-            resetQuiz();
-        }
-
-        function changeMode() {
-            const radios = document.getElementsByName('mode');
-            for (const radio of radios) {
-                if (radio.checked) {
-                    currentMode = radio.value;
-                    break;
-                }
-            }
-            resetQuiz();
-        }
-
-        function resetQuiz() {
-            // UIリセット
-            const msgArea = getEl('messageArea');
-            msgArea.style.display = 'none';
-            msgArea.className = '';
-            msgArea.textContent = '';
-            
-            getEl('checkBtn').classList.remove('hidden');
-            getEl('retryBtn').classList.add('hidden');
-
-            const table = getEl('quizTable');
-            // innerHTML="" は子要素削除の高速な手段として許容されるが、
-            // 念のためループ削除にするなら while(table.firstChild) table.removeChild(table.firstChild);
-            table.textContent = ''; 
-
-            const colCount = (currentMode === 'basic') ? 3 : 5;
-            
-            // --- ヘッダー生成 (document.createElement使用) ---
-            const thead = document.createElement('tr');
-            thead.appendChild(document.createElement('th')); // 左上
-            
-            for (let i = 0; i < colCount; i++) {
-                const th = document.createElement('th');
-                th.textContent = config.allColHeaders[i]; // HTMLタグは解釈されない(安全)
-                thead.appendChild(th);
-            }
-            table.appendChild(thead);
-
-            // --- データ行生成ロジック ---
-            const rate = difficultyRates[currentLevel];
-            let tableRows = [];
-            let totalBlanks = 0;
-            let attempts = 0;
-
-            do {
-                tableRows = [];
-                totalBlanks = 0;
-                attempts++;
-
-                config.allData.forEach((fullRowData, rIndex) => {
-                    let rowCells = [];
-                    let rowBlankCount = 0;
-
-                    for (let cIndex = 0; cIndex < colCount; cIndex++) {
-                        const cellData = fullRowData[cIndex];
-                        let isBlank = false;
-                        
-                        if (cellData !== "-") {
-                            // 将来的に「所有格だけ穴埋め」等のロジックを入れるならここで判定
-                            if (Math.random() < rate) {
-                                isBlank = true;
-                                rowBlankCount++;
-                                totalBlanks++;
-                            }
-                        }
-                        rowCells.push({
-                            text: cellData,
-                            isBlank: isBlank,
-                            r: rIndex,
-                            c: cIndex
-                        });
-                    }
-
-                    // 行すべてが空欄(rowBlankCount === colCount)になってしまった場合、
-                    // ランダムに1つだけ空欄を解除する（ヒントを残す）
-                    if (rowBlankCount === colCount && colCount > 0) {
-                         // 空欄になっているセルのインデックスを探す
-                         const blankIndices = rowCells
-                            .map((cell, idx) => cell.isBlank ? idx : -1)
-                            .filter(idx => idx !== -1);
-                         
-                         if (blankIndices.length > 0) {
-                             // ランダムに1つ選んで可視化
-                             const rescueIndex = blankIndices[Math.floor(Math.random() * blankIndices.length)];
-                             rowCells[rescueIndex].isBlank = false;
-                             totalBlanks--; 
-                         }
-                    }
-
-                    tableRows.push(rowCells);
-                });
-                
-            } while (totalBlanks < 2 && attempts < 100);
-
-            // --- DOM描画 (innerHTML不使用) ---
-            tableRows.forEach((rowCells, rIndex) => {
-                const tr = document.createElement('tr');
-                
-                const rowHead = document.createElement('td');
-                rowHead.classList.add('row-header');
-                rowHead.textContent = config.rowHeaders[rIndex];
-                tr.appendChild(rowHead);
-
-                rowCells.forEach(cell => {
-                    const td = document.createElement('td');
-                    
-                    if (cell.text === "-") {
-                        td.textContent = "-";
-                    } else if (cell.isBlank) {
-                        const input = document.createElement('input');
-                        input.type = "text";
-                        input.dataset.r = cell.r;
-                        input.dataset.c = cell.c;
-                        input.autocomplete = "off";
-                        td.appendChild(input);
-                    } else {
-                        td.textContent = cell.text;
-                    }
-                    tr.appendChild(td);
-                });
-                table.appendChild(tr);
-            });
-
-            // フォーカス制御
-            const firstInput = table.querySelector('input[type="text"]');
-            if (firstInput && window.innerWidth > 600) { 
-                firstInput.focus(); 
-            }
-        }
-
-        function checkAnswers() {
-            const inputs = document.querySelectorAll('input[type="text"]');
-            let correctCount = 0;
-            let totalCount = inputs.length;
-
-            if (totalCount === 0) return;
-
-            inputs.forEach(input => {
-                const r = input.dataset.r;
-                const c = input.dataset.c;
-                const correctVal = config.allData[r][c];
-                const userVal = input.value.trim();
-                const parentTd = input.parentElement;
-
-                input.disabled = true;
-
-                // innerHTMLを使わず、テキストノード操作で更新
-                if (userVal.toLowerCase() === correctVal.toLowerCase()) {
-                    parentTd.textContent = correctVal; 
-                    parentTd.classList.add('correct-cell');
-                    correctCount++;
-                } else {
-                    parentTd.classList.add('incorrect-cell');
-                    // ヒント要素もcreateElementで作る
-                    const hint = document.createElement('div');
-                    hint.classList.add('answer-hint');
-                    hint.textContent = `(${correctVal})`;
-                    parentTd.appendChild(hint);
-                }
-            });
-
-            getEl('checkBtn').classList.add('hidden');
-            getEl('retryBtn').classList.remove('hidden');
-
-            if (correctCount >= (totalCount - 1)) {
-                const msgArea = getEl('messageArea');
-                if (correctCount === totalCount) {
-                    msgArea.textContent = "🎉 Perfect!! 全問正解です！ 🎉";
-                    msgArea.className = 'msg-success';
-                } else if (totalCount >= 2 && correctCount === (totalCount - 1)) {
-                    msgArea.textContent = "惜しい！ あと1問です！";
-                    msgArea.className = 'msg-veryclose';
-                }
-                msgArea.style.display = 'block';
-            }
-        }
-
-        // 外部から呼べる関数を公開
-        return {
-            init,
-            setDifficulty,
-            changeMode,
-            resetQuiz,
-            checkAnswers
-        };
-
-    })();
-
-    // 起動
-    app.init();
-</script>
+    <script src="./app.js"></script>
+    
+    <script>
+    const pronData = {
+        title: "人称代名詞 演習",
+        allColHeaders: ["主格", "目的格", "所有格", "所有代名詞", "再帰代名詞"],
+        rowHeaders: [
+            "1人称 単数", "2人称 単数", "3人称 単数（男性）", "3人称 単数（女性）", "3人称 単数（物・事）",
+            "1人称 複数", "2人称 複数", "3人称 複数"
+        ],
+        allData: [
+            ["I",    "me",   "my",    "mine",   "myself"],
+            ["you",  "you",  "your",  "yours",  "yourself"],
+            ["he",   "him",  "his",   "his",    "himself"],
+            ["she",  "her",  "her",   "hers",   "herself"],
+            ["it",   "it",   "its",   "-",      "itself"],
+            ["we",   "us",   "our",   "ours",   "ourselves"],
+            ["you",  "you",  "your",  "yours",  "yourselves"],
+            ["they", "them", "their", "theirs", "themselves"]
+        ],
+        // オプション: モード切替を隠すかどうか
+        disableModeSelection: false,
+        // 穴埋めしない列を記述
+        noQuizColumns: []
+    };
+    
+    // アプリ起動
+    app.init(pronData);
+    </script>
 
 </body>
 </html>
