@@ -69,8 +69,8 @@
             <span>出題数:</span>
             <button class="row-count-btn" data-count="10" onclick="app.setRowCount(10)">10問</button>
             <button class="row-count-btn" data-count="20" onclick="app.setRowCount(20)">20問</button>
-            <button class="row-count-btn" data-count="30" onclick="app.setRowCount(30)">30問</button>
-            <button class="row-count-btn" data-count="0" onclick="app.setRowCount(0)">全問</button>
+            <!-- <button class="row-count-btn" data-count="30" onclick="app.setRowCount(30)">30問</button> -->
+            <!-- <button class="row-count-btn" data-count="0" onclick="app.setRowCount(0)">全問</button> -->
         </div>
     </div>
 
@@ -82,7 +82,12 @@
 
     <div class="btn-container">
         <button id="checkBtn" class="action-btn" onclick="app.checkAnswers()">答え合わせ</button>
-        <button id="retryBtn" class="action-btn hidden" onclick="app.resetQuiz()">もう一回</button>
+        <button id="retrySameBtn" class="action-btn hidden" onclick="app.resetQuiz(true)" style="background-color: #17a2b8;">
+            同じ問題
+        </button>
+        <button id="nextBtn" class="action-btn hidden" onclick="app.resetQuiz(false)">
+            次の問題 ➔
+        </button>
     </div>
     <div class="description-box">
         ページの再読み込み（リロード）で空欄は再配置されます。<br>
