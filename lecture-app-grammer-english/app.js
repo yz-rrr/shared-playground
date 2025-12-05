@@ -10,6 +10,10 @@ const app = (function() {
     let currentMode = 'basic'; 
     let difficultyRates = { 1: 0.15, 2: 0.35, 3: 0.60 };
 
+    // 表示行数の管理
+    let currentRowCount = 0; // 0なら全件表示
+    const STORAGE_KEY_PREFIX = 'quiz_last_rows_'; // ローカルストレージのキー接頭辞
+
     const getEl = (id) => document.getElementById(id);
 
     // 初期化関数：各ページ固有のデータをここで受け取る
@@ -26,6 +30,23 @@ const app = (function() {
             modeGroup.style.display = 'none';
             // モード選択が無効な場合、設定があればbasicColCountに従うか、なければ全表示
             currentMode = config.basicColCount ? 'basic' : 'full';
+        }
+
+        // --- 新機能: 行数制限のUI制御 ---
+        const rowLimitGroup = document.querySelector('.row-limit-group');
+        if (config.enableRowSelection) {
+            // HTML側にUIがあれば表示、初期値を設定
+            if (rowLimitGroup) {
+                rowLimitGroup.style.display = 'flex';
+            }
+            currentRowCount = config.defaultRowCount || 20;
+            updateRowCountUI();
+        } else {
+            // 無効な場合はUIを隠し、全件表示(0)にする
+            if (rowLimitGroup) {
+                rowLimitGroup.style.display = 'none';
+            }
+            currentRowCount = 0; 
         }
 
         resetQuiz();
@@ -54,6 +75,82 @@ const app = (function() {
         resetQuiz();
     }
 
+    // --- 問題数変更 ---
+    function setRowCount(count) {
+        currentRowCount = count;
+        updateRowCountUI();
+        resetQuiz();
+    }
+
+    function updateRowCountUI() {
+        // ボタンの見た目制御（HTML構造に依存するため、classで判定）
+        document.querySelectorAll('.row-count-btn').forEach(btn => {
+            const val = parseInt(btn.dataset.count, 10);
+            if (val === currentRowCount) btn.classList.add('active');
+            else btn.classList.remove('active');
+        });
+    }
+
+    /**
+     * 表示すべき行データのインデックス配列を計算する
+     * localStorageを使って「前回表示していない問題」を優先する
+     */
+    function selectRowIndices(totalDataLength) {
+        // 行数制限がない、またはデータ総数が制限以下の場合はすべて返す
+        if (currentRowCount === 0 || totalDataLength <= currentRowCount) {
+            return [...Array(totalDataLength).keys()];
+        }
+
+        const v = currentRowCount;
+        // config.id が未設定の場合はタイトルを使うが、基本はHTML側でid設定を推奨
+        const storageKey = STORAGE_KEY_PREFIX + (config.id || config.title); 
+        
+        // 前回表示したインデックスを取得
+        let lastShownIndices = [];
+        try {
+            const saved = localStorage.getItem(storageKey);
+            if (saved) lastShownIndices = JSON.parse(saved);
+        } catch (e) { 
+            // プライベートモード等でアクセス拒否された場合はエラー無視（機能オフ）
+            console.warn("Storage access limited:", e); 
+        }
+
+        const allIndices = [...Array(totalDataLength).keys()];
+        
+        // 「今表示していない問題」(Hidden) の特定
+        const hiddenIndices = allIndices.filter(idx => !lastShownIndices.includes(idx));
+        const h = hiddenIndices.length;
+
+        let selectedIndices = [];
+
+        // 要件ロジックの実装
+        if (h === v) {
+            // a. (h = v) 「今表示していない問題」をすべて表示
+            selectedIndices = [...hiddenIndices];
+        } else if (h < v) {
+            // b. (h < v) 「今表示していない問題」全表示 + 「今表示している(前回表示した)」からランダム
+            selectedIndices = [...hiddenIndices];
+            const needed = v - h;
+            // lastShownIndices からランダムに needed 個選ぶ
+            const shuffledLast = [...lastShownIndices].sort(() => 0.5 - Math.random());
+            selectedIndices = selectedIndices.concat(shuffledLast.slice(0, needed));
+        } else {
+            // c. (h > v) 「今表示していない問題」からランダムに v 個
+            const shuffledHidden = [...hiddenIndices].sort(() => 0.5 - Math.random());
+            selectedIndices = shuffledHidden.slice(0, v);
+        }
+
+        // 今回の表示内容を保存
+        try {
+            localStorage.setItem(storageKey, JSON.stringify(selectedIndices));
+        } catch (e) {
+            // 保存失敗時も処理は続行
+        }
+
+        // インデックス順にソートして返す（テーブルの見た目順序を維持するため）
+        return selectedIndices.sort((a, b) => a - b);
+    }
+
     function resetQuiz() {
         const msgArea = getEl('messageArea');
         msgArea.style.display = 'none';
@@ -67,7 +164,6 @@ const app = (function() {
         table.textContent = ''; 
 
         // モードによる列数の決定
-        // disableModeSelectionの場合は全カラムを表示
         let colCount;
         if (config.disableModeSelection) {
             colCount = config.allColHeaders.length;
@@ -88,6 +184,10 @@ const app = (function() {
         }
         table.appendChild(thead);
 
+        // --- データ行の選定 ---
+        // ここで選ばれた行だけを使ってテーブルを作る
+        const targetIndices = selectRowIndices(config.allData.length);
+
         // データ行生成
         const rate = difficultyRates[currentLevel];
         let tableRows = [];
@@ -99,10 +199,13 @@ const app = (function() {
             totalBlanks = 0;
             attempts++;
 
-            config.allData.forEach((fullRowData, rIndex) => {
+            // 選ばれた行(targetIndices)だけを処理
+            targetIndices.forEach((rIndex) => {
+                const fullRowData = config.allData[rIndex];
+
                 let rowCells = [];
                 let rowBlankCount = 0;
-                let quizTargetCount = 0; // その行で穴埋め対象となりうるセルの数
+                let quizTargetCount = 0; 
                 
                 for (let cIndex = 0; cIndex < colCount; cIndex++) {
                     const cellData = fullRowData[cIndex];
@@ -110,7 +213,7 @@ const app = (function() {
                     const isExcluded = config.noQuizColumns && config.noQuizColumns.includes(cIndex);
 
                     if (cellData !== "-" && !isExcluded) {
-                        quizTargetCount++; // 穴埋め候補としてカウント
+                        quizTargetCount++; 
                         if (Math.random() < rate) {
                             isBlank = true;
                             rowBlankCount++;
@@ -120,7 +223,7 @@ const app = (function() {
                     rowCells.push({
                         text: cellData,
                         isBlank: isBlank,
-                        r: rIndex,
+                        r: rIndex, // 元データのインデックスを保持
                         c: cIndex
                     });
                 }
@@ -143,11 +246,14 @@ const app = (function() {
         } while (totalBlanks < 2 && attempts < 100);
 
         // 描画
-        tableRows.forEach((rowCells, rIndex) => {
+        tableRows.forEach((rowCells) => {
+            // 行ヘッダー取得 (cell.r を使う)
+            const originalRIndex = rowCells[0].r;
+
             const tr = document.createElement('tr');
             const rowHead = document.createElement('td');
             rowHead.classList.add('row-header');
-            rowHead.textContent = config.rowHeaders[rIndex];
+            rowHead.textContent = config.rowHeaders[originalRIndex];
             tr.appendChild(rowHead);
 
             rowCells.forEach(cell => {
@@ -157,7 +263,7 @@ const app = (function() {
                 } else if (cell.isBlank) {
                     const input = document.createElement('input');
                     input.type = "text";
-                    input.dataset.r = cell.r;
+                    input.dataset.r = cell.r; // 元データの位置
                     input.dataset.c = cell.c;
                     input.autocomplete = "off";
                     td.appendChild(input);
@@ -184,7 +290,7 @@ const app = (function() {
         if (totalCount === 0) return;
 
         inputs.forEach(input => {
-            const r = input.dataset.r;
+            const r = input.dataset.r; // 元データのインデックス
             const c = input.dataset.c;
             const correctVal = config.allData[r][c];
             const userVal = input.value.trim();
@@ -222,5 +328,5 @@ const app = (function() {
     }
 
     // 公開メソッド
-    return { init, setDifficulty, changeMode, resetQuiz, checkAnswers };
+    return { init, setDifficulty, changeMode, setRowCount, resetQuiz, checkAnswers };
 })();
