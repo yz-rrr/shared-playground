@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>動詞の活用</title>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        /* 追加機能用のスタイル（ここだけに記述） */
+        .row-limit-group {
+            display: none; /* JSで有効化されるまで隠す */
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px dashed #ccc;
+            width: 100%;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .row-count-btn {
+            padding: 4px 12px;
+            border: 1px solid #6c757d;
+            background-color: white;
+            color: #6c757d;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+        .row-count-btn:hover {
+            background-color: #f0f0f0;
+        }
+        .row-count-btn.active {
+            background-color: #6c757d;
+            color: white;
+            border-color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+
+    <h1 id="pageTitle">読み込み中...</h1>
+    
+    <div style="text-align:center; margin-bottom:10px;">
+        <a href="./index.html" style="font-size:0.9rem;">← メニューに戻る</a>
+    </div>
+
+    <div class="controls">
+        <div class="level-group">
+            <button class="level-btn active" onclick="app.setDifficulty(1)">Level 1</button>
+            <button class="level-btn" onclick="app.setDifficulty(2)">Level 2</button>
+            <button class="level-btn" onclick="app.setDifficulty(3)">Level 3</button>
+        </div>
+
+        <div class="mode-group">
+            <label class="mode-label">
+                <input type="radio" name="mode" value="basic" checked onchange="app.changeMode()">
+                基本
+            </label>
+            <label class="mode-label">
+                <input type="radio" name="mode" value="full" onchange="app.changeMode()">
+                すべて
+            </label>
+        </div>
+
+        <div class="row-limit-group">
+            <span>出題数:</span>
+            <button class="row-count-btn" data-count="10" onclick="app.setRowCount(10)">10問</button>
+            <button class="row-count-btn" data-count="20" onclick="app.setRowCount(20)">20問</button>
+            <!-- <button class="row-count-btn" data-count="30" onclick="app.setRowCount(30)">30問</button> -->
+            <!-- <button class="row-count-btn" data-count="0" onclick="app.setRowCount(0)">全問</button> -->
+        </div>
+    </div>
+
+    <div id="messageArea"></div>
+
+    <div class="table-container">
+        <table id="quizTable"></table>
+    </div>
+
+    <div class="btn-container">
+        <button id="checkBtn" class="action-btn" onclick="app.checkAnswers()">答え合わせ</button>
+        <button id="retrySameBtn" class="action-btn hidden" onclick="app.resetQuiz(true)">
+            同じ問題<!--  style="background-color: #17a2b8;"-->
+        </button>
+        <button id="nextBtn" class="action-btn hidden" onclick="app.resetQuiz(false)">
+            次の問題 ➔
+        </button>
+    </div>
+    <div class="description-box">
+        ページの再読み込み（リロード）で空欄は再配置されます。<br>
+        Levelが上がると空欄が作られやすくなるように設定しています。
+    </div>
+
+    <script src="./app.js"></script>
+
+    <script>
+
+
+        const verbData = {
+            id: "irregular_verbs_v1", // localStorage保存用のユニークID
+            title: "動詞の活用（規則・不規則ミックス）",
+            allColHeaders: ["原形", "過去形", "過去分詞"],
+            // 行数制限機能の有効化
+            enableRowSelection: true,
+            defaultRowCount: 20, // デフォルトで20問表示
+            // ヘッダー定義
+            allColHeaders: ["原形", "過去形", "過去分詞"],
+            rowHeaders: [
+                // --- 既存の不規則動詞 ---
+                "go（行く）", "see（見る）", "buy（買う）", "take（取る）", 
+                "come（来る）", "know（知る）", "speak（話す）", "write（書く）",
+                "give（与える）", "eat（食べる）", "make（作る）", "think（考える）",
+                "begin（始める）", "run（走る）", "break（壊す）", "teach（教える）",
+                "catch（捕まえる）", "choose（選ぶ）", "drink（飲む）", "drive（運転する）",
+                "fall（落ちる）", "fly（飛ぶ）", "grow（成長する）",
+                "hear（聞く）", "keep（保つ）", "leave（去る）", "lose（失う）",
+                "meet（会う）", "pay（払う）", "ride（乗る）", "sing（歌う）",
+                "sit（座る）", "sleep（眠る）", "stand（立つ）", "swim（泳ぐ）",
+                "tell（話す）", "understand（理解する）", "wear（着る）",
+                "win（勝つ）", "bring（持ってくる）", "build（建てる）", "cut（切る）",
+                "do（する）", "draw（描く）", "feel（感じる）", "find（見つける）",
+                "have（持っている）", "put（置く）", "read（読む）",
+                "say（言う）", "sell（売る）", "send（送る）",
+                // --- 紛らわしい動詞（一部規則含む） ---
+                "lie（嘘をつく）", "lie（横になる）", "lay（置く）", "cost（費用がかかる）",
+                // --- 規則動詞パターン演習 ---
+                "watch（見る）",              // そのままed
+                "use（使う）",                // eで終わる (+d)
+                "hope（望む）",               // eで終わる (+d)
+                "try（試みる）",              // 子音字+y (y->i +ed)
+                "study（勉強する）",          // 子音字+y (y->i +ed)
+                "stop（止まる）",             // 短母音+子音字 (重ねてed)
+                "drop（落とす）",             // 短母音+子音字 (重ねてed)
+                "plan（計画する）"            // 短母音+子音字 (重ねてed)
+            ],
+            // データ定義
+            allData: [
+                // --- 既存の不規則動詞データ ---
+                ["go", "went", "gone"], ["see", "saw", "seen"], ["buy", "bought", "bought"], ["take", "took", "taken"],
+                ["come", "came", "come"], ["know", "knew", "known"], ["speak", "spoke", "spoken"], ["write", "wrote", "written"],
+                ["give", "gave", "given"], ["eat", "ate", "eaten"], ["make", "made", "made"], ["think", "thought", "thought"],
+                ["begin", "began", "begun"], ["run", "ran", "run"], ["break", "broke", "broken"], ["teach", "taught", "taught"],
+                ["catch", "caught", "caught"], ["choose", "chose", "chosen"], ["drink", "drank", "drunk"], ["drive", "drove", "driven"],
+                ["fall", "fell", "fallen"], ["fly", "flew", "flown"], ["grow", "grew", "grown"],
+                ["hear", "heard", "heard"], ["keep", "kept", "kept"], ["leave", "left", "left"], ["lose", "lost", "lost"],
+                ["meet", "met", "met"], ["pay", "paid", "paid"], ["ride", "rode", "ridden"], ["sing", "sang", "sung"],
+                ["sit", "sat", "sat"], ["sleep", "slept", "slept"], ["stand", "stood", "stood"], ["swim", "swam", "swum"],
+                ["tell", "told", "told"], ["understand", "understood", "understood"], ["wear", "wore", "worn"],
+                ["win", "won", "won"], ["bring", "brought", "brought"], ["build", "built", "built"], ["cut", "cut", "cut"],
+                ["do", "did", "done"], ["draw", "drew", "drawn"], ["feel", "felt", "felt"], ["find", "found", "found"],
+                ["have", "had", "had"], ["put", "put", "put"], ["read", "read", "read"],
+                ["say", "said", "said"], ["sell", "sold", "sold"], ["send", "sent", "sent"], 
+                // --- 紛らわしい動詞 ---
+                ["lie", "lied", "lied"],     // 嘘をつく（規則：ieで終わる扱いでdのみ）
+                ["lie", "lay", "lain"],      // 横になる
+                ["lay", "laid", "laid"],     // 置く
+                ["cost", "cost", "cost"],    // 費用がかかる
+                // --- 規則動詞パターン演習 ---
+                ["watch", "watched", "watched"], // そのままed
+                ["use",   "used",    "used"],    // eで終わる
+                ["hope",  "hoped",   "hoped"],   // eで終わる
+                ["try",   "tried",   "tried"],   // y -> ied
+                ["study", "studied", "studied"], // y -> ied
+                ["stop",  "stopped", "stopped"], // 重ねてed
+                ["drop",  "dropped", "dropped"], // 重ねてed
+                ["plan",  "planned", "planned"]  // 重ねてed
+            ],
+            // オプション: モード切替を隠す
+            disableModeSelection: true,
+            // 穴埋めしない列を記述
+            noQuizColumns: [0]
+        };
+        
+        app.init(verbData);
+    </script>
+</body>
+</html>
