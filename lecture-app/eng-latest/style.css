@@ -1,0 +1,229 @@
+@charset "UTF-8";
+
+body {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 10px 15px;
+    background-color: #f9f9f9;
+    color: #333;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 15px;
+    font-size: 1.5rem;
+}
+
+/* リンクボタン (目次用) */
+.menu-link {
+    display: block;
+    max-width: 300px;
+    margin: 10px auto;
+    padding: 15px;
+    background: white;
+    border: 1px solid #007bff;
+    color: #007bff;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: bold;
+    transition: background 0.2s;
+}
+.menu-link:hover {
+    background: #e6f2ff;
+}
+
+/* コントロールパネル */
+.controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.level-group { display: flex; gap: 8px; }
+.level-btn {
+    padding: 6px 16px;
+    border: 1px solid #007bff;
+    background-color: white;
+    color: #007bff;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+.level-btn:hover { background-color: #e6f2ff; }
+.level-btn.active { background-color: #007bff; color: white; }
+
+/* モード切替エリアは必要に応じてJSで表示制御するため汎用クラス */
+.mode-group { 
+    display: flex; gap: 15px; font-size: 0.95rem; align-items: center; 
+}
+.mode-label { cursor: pointer; display: flex; align-items: center; gap: 5px; }
+input[type="radio"] { transform: scale(1.2); cursor: pointer; }
+
+/* メッセージエリア */
+#messageArea {
+    text-align: center;
+    padding: 10px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    font-size: 1.1em;
+    font-weight: bold;
+    display: none;
+}
+.msg-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+    animation: fadeIn 0.5s;
+}
+.msg-veryclose {
+    background-color: #ededd4;
+    color: #575715;
+    border: 1px solid #e6e6c3;
+    animation: fadeIn 0.5s;
+}
+.description-box {
+    text-align: center;
+}
+
+/* テーブル */
+.table-container {
+    overflow-x: auto;
+    margin-bottom: 20px;
+    -webkit-overflow-scrolling: touch;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: #fff;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    font-size: 0.95rem;
+}
+th, td {
+    border: 1px solid #ccc;
+    padding: 10px 8px;
+    text-align: center;
+    min-width: 60px;
+
+    vertical-align: middle; /* 上下中央揃え */
+    
+    /* 改行を許可する設定 */
+    white-space: normal; 
+    
+    /* 長い単語や「/」区切りの箇所で適切に折り返す */
+    overflow-wrap: break-word; 
+    word-wrap: break-word;     
+
+}
+th {
+    background-color: #007bff;
+    color: white;
+    white-space: pre-line;
+    vertical-align: middle;
+}
+td.row-header {
+    background-color: #e9ecef;
+    font-weight: bold;
+    width: 1%;
+    white-space: nowrap;
+    text-align: left;
+    padding-left: 10px;
+}
+
+/* 入力フォーム */
+input[type="text"] {
+    width: 90%;
+    padding: 6px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+    text-align: center;
+    background-color: #fcfcfc;
+}
+input[type="text"]:focus {
+    outline: none;
+    border-color: #007bff;
+    background-color: #fff;
+    box-shadow: 0 0 0 2px rgba(0,123,255,0.1);
+}
+
+/* 正誤判定 */
+.correct-cell {
+    background-color: #d4edda;
+    color: #155724;
+    font-weight: bold;
+}
+.incorrect-cell { background-color: #f8d7da; }
+.incorrect-cell input {
+    border-color: #dc3545;
+    color: #dc3545;
+    background-color: #fff;
+}
+.answer-hint {
+    font-size: 0.75em;
+    color: #dc3545;
+    margin-top: 2px;
+    display: block;
+
+    line-height: 1.2; /* 行間を少し詰める（複数行になったときに見やすく） */
+    word-break: break-all; /* 必要なら単語の途中でも改行 */
+}
+
+/* ボタン */
+.btn-container { text-align: center; margin-top: 20px; padding-bottom: 40px; }
+button.action-btn {
+    padding: 12px 40px;
+    font-size: 18px;
+    cursor: pointer;
+    border: none;
+    border-radius: 5px;
+    color: white;
+    transition: background 0.3s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+/* 答え合わせ：少し落ち着いた緑（Teal寄り） */
+#checkBtn { background-color: #20c997; color: #fff; }
+#checkBtn:hover { background-color: #1aa179; }
+
+#retryBtn, #nextBtn { background-color: #007bff; }
+#retryBtn:hover, #nextBtn:hover { background-color: #0069d9; }
+
+/* 次の問題：青 
+#nextBtn { background-color: #5a67c5; color: #fff; }
+#nextBtn:hover  { background-color: #4b66a4; }
+*/
+
+/* 同じ問題：落ち着いたマスタード */
+#retrySameBtn {
+    background-color: #e6a530; /* 深い黄色に変更 */
+    color: #fff;               /* 文字は白 */
+}
+#retrySameBtn:hover {
+    background-color: #b09800; /* ホバー時はさらに暗く */
+}
+
+.hidden { display: none; }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 600px) {
+    body { padding: 5px; }
+    h1 { font-size: 1.2rem; }
+    .controls { gap: 10px; padding: 10px; }
+    .level-btn { padding: 5px 12px; font-size: 0.8rem; }
+    th, td { padding: 6px 2px; font-size: 0.85rem; }
+    input[type="text"] { font-size: 0.9rem; padding: 4px; }
+    th { font-size: 0.8rem; }
+}
