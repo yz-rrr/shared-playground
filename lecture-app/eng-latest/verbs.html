@@ -75,6 +75,9 @@
     </div>
 
     <div id="messageArea"></div>
+    <div class="description-box">
+        正しい答えが複数ある場合は、どれか1つを入力してください。 
+    </div>
 
     <div class="table-container">
         <table id="quizTable"></table>
@@ -90,8 +93,9 @@
         </button>
     </div>
     <div class="description-box">
+    【仕様説明】
         ページの再読み込み（リロード）で空欄は再配置されます。<br>
-        Levelが上がると空欄が作られやすくなるように設定しています。
+        Levelが上がると空欄が作られやすくなるように設定しています。   
     </div>
 
     <script src="./app.js"></script>
@@ -126,6 +130,16 @@
                 "say（言う）", "sell（売る）", "send（送る）",
                 // --- 紛らわしい動詞（一部規則含む） ---
                 "lie（嘘をつく）", "lie（横になる）", "lay（置く）", "cost（費用がかかる）",
+                // ---複数正解がある動詞 ---
+                "show（見せる）",             // showed / shown
+                "prove（証明する）",           // proved / proven
+                "get（手に入れる）",           // got / gotten
+                "learn（学ぶ）",              // learned / learnt
+                "dream（夢を見る）",           // dreamed / dreamt
+                "burn（燃える・燃やす）",      // burned / burnt
+                "smell（匂う）",              // smelled / smelt
+                "spell（つづる）",            // spelled / spelt
+                "spill（こぼす）",            // spilled / spilt
                 // --- 規則動詞パターン演習 ---
                 "watch（見る）",              // そのままed
                 "use（使う）",                // eで終わる (+d)
@@ -158,6 +172,16 @@
                 ["lie", "lay", "lain"],      // 横になる
                 ["lay", "laid", "laid"],     // 置く
                 ["cost", "cost", "cost"],    // 費用がかかる
+                // --- 【新規追加】複数正解がある動詞 ---
+                ["show",  "showed",         "shown/showed"],      // 過去分詞が2つ
+                ["prove", "proved",         "proven/proved"],     // 過去分詞が2つ
+                ["get",   "got",            "gotten/got"],        // 米:gotten 英:got
+                ["learn", "learned/learnt", "learned/learnt"],    // edとtの両方あり
+                ["dream", "dreamed/dreamt", "dreamed/dreamt"],    // edとtの両方あり
+                ["burn",  "burned/burnt",   "burned/burnt"],      // edとtの両方あり
+                ["smell", "smelled/smelt",  "smelled/smelt"],     // edとtの両方あり
+                ["spell", "spelled/spelt",  "spelled/spelt"],     // edとtの両方あり
+                ["spill", "spilled/spilt",  "spilled/spilt"],     // edとtの両方あり
                 // --- 規則動詞パターン演習 ---
                 ["watch", "watched", "watched"], // そのままed
                 ["use",   "used",    "used"],    // eで終わる
