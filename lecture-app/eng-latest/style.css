@@ -69,6 +69,47 @@ h1 {
 .mode-label { cursor: pointer; display: flex; align-items: center; gap: 5px; }
 input[type="radio"] { transform: scale(1.2); cursor: pointer; }
 
+/* 行数設定エリア */
+
+.row-limit-group {
+    display: none; /* JSで有効化されるまで隠す */
+    align-items: center;
+    gap: 10px;
+    font-size: 0.9rem;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed #ccc;
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+.row-count-btn {
+    padding: 4px 12px;
+    border: 1px solid #6c757d;
+    background-color: white;
+    color: #6c757d;
+    border-radius: 15px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+.row-count-btn:hover {
+    background-color: #f0f0f0;
+}
+.row-count-btn.active {
+    background-color: #6c757d;
+    color: white;
+    border-color: #6c757d;
+}
+
+
+/* index.htmlへのナビ */
+.navToIndex {
+    text-align:center; 
+    margin-bottom:10px;
+    font-size:0.9rem;
+}
+
 /* メッセージエリア */
 #messageArea {
     text-align: center;
@@ -210,6 +251,8 @@ button.action-btn {
 #retrySameBtn:hover {
     background-color: #b09800; /* ホバー時はさらに暗く */
 }
+
+
 
 .hidden { display: none; }
 
