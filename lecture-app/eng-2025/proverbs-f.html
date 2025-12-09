@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>英語の諺（一部）</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+
+    <h1 id="pageTitle">読み込み中...</h1>
+    
+    <div class="navToIndex">
+        <a href="./index.html">← メニューに戻る</a>
+    </div>
+
+    <div class="controls">
+        <div class="level-group">
+            <button class="level-btn active" onclick="app.setDifficulty(1)">Level 1</button>
+            <button class="level-btn" onclick="app.setDifficulty(2)">Level 2</button>
+            <button class="level-btn" onclick="app.setDifficulty(3)">Level 3</button>
+        </div>
+
+        <div class="mode-group">
+            <label class="mode-label">
+                <input type="radio" name="mode" value="basic" checked onchange="app.changeMode()">
+                基本
+            </label>
+            <label class="mode-label">
+                <input type="radio" name="mode" value="full" onchange="app.changeMode()">
+                すべて
+            </label>
+        </div>
+
+        <div class="row-limit-group">
+            <span>出題数:</span>
+            <button class="row-count-btn" data-count="10" onclick="app.setRowCount(10)">10問</button>
+            <button class="row-count-btn" data-count="20" onclick="app.setRowCount(20)">20問</button>
+            <!-- <button class="row-count-btn" data-count="30" onclick="app.setRowCount(30)">30問</button> -->
+            <!-- <button class="row-count-btn" data-count="0" onclick="app.setRowCount(0)">全問</button> -->
+        </div>
+    </div>
+
+    <div id="messageArea"></div>
+    <div class="description-box">
+        空欄は-で埋めています。
+        カンマ（,）は1つで独立したセルにしています。<br>
+        ※「正答」は、教科書 <i>First Primer</i> に準拠したものです。
+        <!-- 正しい答えが複数ある場合は、どれか1つを入力してください。 -->
+    </div>
+
+    <div class="table-container">
+        <table id="quizTable"></table>
+    </div>
+
+    <div class="btn-container">
+        <button id="checkBtn" class="action-btn" onclick="app.checkAnswers()">答え合わせ</button>
+        <button id="retrySameBtn" class="action-btn hidden" onclick="app.resetQuiz(true)">
+            同じ問題<!--  style="background-color: #17a2b8;"-->
+        </button>
+        <button id="nextBtn" class="action-btn hidden" onclick="app.resetQuiz(false)">
+            次の問題 ➔
+        </button>
+    </div>
+    <div class="description-box">
+    【仕様説明】
+        ページの再読み込み（リロード）で空欄は再配置されます。<br>
+        Levelが上がると空欄が作られやすくなるように設定しています。   
+    </div>
+
+    <script src="./app.js"></script>
+
+    <script>
+
+
+    const proverbData = {
+            id: "proverbs_v1",
+            title: "英語のことわざ",
+            // 行数制限機能の有効化
+            enableRowSelection: true,
+            defaultRowCount: 10,
+            // ヘッダー定義：和訳 + 英語5列 + 記号
+            allColHeaders: ["", "", "", "", "", ""],
+            rowHeaders: [
+                "郷に入っては郷に従え",
+                "言うは易く行うは難し",
+                "先んずれば人を制す",
+                "まさかの時の友こそ真の友",
+                "天は自ら助くる者を助く",
+                "正直は最良の策である",
+                "覆水盆に返らず",
+                "千里の道も一歩より",
+                "習うよりは慣れよ",
+                "ローマは一日にして成らず",
+                "再考したことが最上である",
+                "ゆっくりと着実にやれば競争に勝つ",
+                "学問に王道なし",
+                "まず実力を養え，それから希望せよ",
+                "明日は明日の風が吹く",
+                "最も短い返答は行うことである",
+                "人からしてもらいたいように人にしてやれ",
+                "布地に応じて服を裁断せよ",
+                "陽の照るうちに干し草を作れ",
+                "3人寄れば文殊の知恵",
+                "早起き鳥が虫を捕まえる"
+            ],
+
+            // データ定義
+            allData: [
+                ["Do in Rome", "as", "the", "Romans", "do", "."],
+                ["Easier", "said", "than", "done", "-", "."],
+                ["First", "come", ",", "first", "served", "."],
+                ["A friend in need", "is", "a", "friend", "indeed", "."],
+                ["Heaven helps", "those", "who", "help", "themselves", "."],
+                ["Honesty", "is", "the", "best", "policy", "."],
+                ["It is no use", "crying", "over", "spilt", "milk", "."],
+                ["Little by", "little", "one", "goes", "far", "."],
+                ["Practice", "makes", "perfect", "-", "-", "."],
+                ["Rome was not", "built", "in", "a", "day", "."],
+                ["Second", "thoughts", "are", "best", "-", "."],
+                ["Slow and", "steady", "wins", "the", "race", "."],
+                ["There is no", "royal", "road", "to", "learning", "."],
+                ["First", "deserve", "and", "then", "desire", "."],
+                ["Tomorrow", "is", "another", "day", "-", "."],
+                ["The shortest", "answer", "is", "doing", "-", "."],
+                ["Do as you", "would", "be", "done", "by", "."],
+                ["Cut your coat", "according", "to", "your", "cloth", "."],
+                ["Make hay", "while", "the", "sun", "shines", "."],
+                ["Two heads", "are", "better", "than", "one", "."],
+                ["The early", "bird", "catches", "the", "worm", "."]
+            ],
+
+            // オプション: モード切替を隠す
+            disableModeSelection: true,
+            
+            // 穴埋めしない列（1, 記号:5）
+            noQuizColumns: [0, 4, 5]
+        };
+        
+        app.init(proverbData);
+    </script>
+</body>
+</html>
