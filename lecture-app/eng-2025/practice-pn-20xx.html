@@ -42,9 +42,15 @@
         ページの再読み込み（リロード）で空欄は再配置されます。<br>
         Levelが上がると空欄が作られやすくなるように設定しています。
     </div>
+
+    <div class="navToIndex">
+        <a href="./index.html">← メニューに戻る</a>
+    </div>
+
     <script src="./app.js"></script>
     
     <script>
+    // quizDataとするか、同じファイルに複数のクイズを入れる可能性を考えpronDataとするか迷った。verbs.htmlではverbDataをquizDataに変えた。
     const pronData = {
         title: "人称代名詞 演習",
         allColHeaders: ["主格", "目的格", "所有格", "所有代名詞", "再帰代名詞"],
@@ -62,9 +68,16 @@
             ["you",  "you",  "your",  "yours",  "yourselves"],
             ["they", "them", "their", "theirs", "themselves"]
         ],
+        // 【オプション】デフォルトで表示する行数が全部ではない場合に記述
         basicColCount: 3,
-        // オプション: モード切替を隠すかどうか
+        // 【オプション】表示列数モード切替を隠すかどうか
         disableModeSelection: false,
+        // 【オプション】難易度ごとの穴埋め率 (0.0 ～ 1.0)
+        difficultyRates: { 1: 0.2, 2: 0.35, 3: 0.55 },
+        // 【オプション】各行の穴埋め対象セルが空欄だけになることを許可するか？ レベルごとに記述
+        allowFullRowBlanks: { 1: false, 2: true, 3: true },
+        // 【オプション】各行、最低でも何個は空欄にするか？　レベルごとに記述
+        minBlanks: { 1: 0, 2: 1, 3: 2 },
         // 穴埋めしない列を記述
         noQuizColumns: []
     };

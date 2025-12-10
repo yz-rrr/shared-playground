@@ -8,7 +8,7 @@ const app = (function() {
     // 1. 状態管理変数
     // ============================================================
     let config = null; // init時にセットされる設定オブジェクト
-    let currentLevel = 2; // 現在の難易度 (1, 2, 3)
+    let currentLevel = 1; // 現在の難易度 (1, 2, 3)
     let currentMode = 'basic'; // 現在のモード ('basic' or 'full')
     
     // 難易度ごとの穴埋め率設定
@@ -40,6 +40,13 @@ const app = (function() {
         const titleEl = getEl('pageTitle');
         if(titleEl) titleEl.textContent = config.title;
 
+        // ▼▼▼ 追加: 難易度設定の上書き ▼▼▼
+        if (config.difficultyRates) {
+            // デフォルト設定にユーザー設定を上書き（マージ）します
+            // 例: ユーザーが { 3: 0.9 } だけ指定した場合、1と2はデフォルトが維持されます
+            difficultyRates = { ...difficultyRates, ...config.difficultyRates };
+        }
+
         // モード切替UIの制御 (configで無効化されている場合は隠す)
         const modeGroup = document.querySelector('.mode-group');
         if (config.disableModeSelection && modeGroup) {
@@ -47,7 +54,6 @@ const app = (function() {
             // モード選択が無効な場合、設定があればbasicColCountに従うか、なければ全表示
             currentMode = config.basicColCount ? 'basic' : 'full';
         }
-
         // 行数制限UIの制御 (verbs.html などで使用)
         const rowLimitGroup = document.querySelector('.row-limit-group');
         if (config.enableRowSelection) {
@@ -184,6 +190,21 @@ const app = (function() {
     // ============================================================
 
     /**
+     * 設定値を取得するヘルパー
+     * 単一の値、またはレベルごとのオブジェクト {1: val, 2: val...} に対応
+     */
+    function getConfigValue(key, defaultValue) {
+        const val = config[key];
+        if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+            // オブジェクトなら現在のレベルの値を返す（未定義ならデフォルト）
+            return (val[currentLevel] !== undefined) ? val[currentLevel] : defaultValue;
+        }
+        // オブジェクトでなければそのまま返す
+        return (val !== undefined) ? val : defaultValue;
+    }
+
+
+    /**
      * クイズをリセット・再描画する
      * @param {boolean} isRetrySame - trueなら現在の問題セットを維持、falseなら新しく選び直す
      */
@@ -211,6 +232,13 @@ const app = (function() {
 
         const table = getEl('quizTable');
         table.textContent = ''; 
+
+
+        // レベルに応じた設定を取得        
+        // 1. 行全体が空欄になることを許可するか（Level 1でfalse, 他はtrueなど）
+        const allowFullRowBlanks = getConfigValue('allowFullRowBlanks', false);
+        // 2. 各行の最低空欄数（Level 3で 1、他は 0 など）
+        const minBlanks = getConfigValue('minBlanks', 0);
 
         // 表示する列数の決定
         let colCount;
@@ -250,10 +278,7 @@ const app = (function() {
         let totalBlanks = 0;
         let attempts = 0;
 
-        // 各行の穴埋め対象セルが空欄だけになるのを許可するか
-        const allowFullRowBlanks = config.allowFullRowBlanks || false;
-
-        // 穴埋め生成ループ（最低でも2箇所の穴ができるまで試行）
+        // 穴埋め生成ループ（最低でも2つの穴を作る）
         do {
             tableRows = [];
             totalBlanks = 0;
@@ -264,45 +289,82 @@ const app = (function() {
 
                 let rowCells = [];
                 let rowBlankCount = 0;
-                let quizTargetCount = 0; 
                 
+                // ★追加: まだ空欄になっていないが、空欄にできる列のインデックスリスト
+                let potentialTargets = []; 
+
                 for (let cIndex = 0; cIndex < colCount; cIndex++) {
                     const cellData = fullRowData[cIndex];
                     let isBlank = false;
                     const isExcluded = config.noQuizColumns && config.noQuizColumns.includes(cIndex);
+                    
+                    // そもそもクイズ対象になるか（ハイフンでなく、除外列でもない）
+                    const isValidTarget = (cellData !== "-" && !isExcluded);
 
-                    if (cellData !== "-" && !isExcluded) {
-                        quizTargetCount++; 
+                    if (isValidTarget) {
+                        // まずは確率（rate）に基づいて空欄にするか決める
                         if (Math.random() < rate) {
                             isBlank = true;
                             rowBlankCount++;
                             totalBlanks++;
+                        } else {
+                            // ★追加: クイズ対象だが今回は空欄にならなかった場所をメモ（後でminBlanks調整に使う）
+                            potentialTargets.push(cIndex);
                         }
                     }
+                    
                     rowCells.push({
                         text: cellData,
                         isBlank: isBlank,
                         r: rIndex,
-                        c: cIndex
+                        c: cIndex,
+                        isValidTarget: isValidTarget // 後で使うので保持しておく
                     });
                 }
 
-                // 詰み防止: 行すべてが空欄になってしまったら1つ開ける
-                if (!allowFullRowBlanks && (rowBlankCount === quizTargetCount) && quizTargetCount > 0) {
+                // ▼▼▼ 追加機能: 最低空欄数 (minBlanks) の保証 ▼▼▼
+                // 現在の空欄数が minBlanks 未満で、かつ空けられる場所（potentialTargets）が残っている場合
+                while (rowBlankCount < minBlanks && potentialTargets.length > 0) {
+                    // 残りの候補からランダムに1つ選んで空欄に変える
+                    const randIdx = Math.floor(Math.random() * potentialTargets.length);
+                    const colIdx = potentialTargets[randIdx];
+                    
+                    // rowCellsの中から該当するセルを探して空欄フラグを立てる
+                    const targetCell = rowCells.find(c => c.c === colIdx);
+                    if (targetCell) {
+                        targetCell.isBlank = true;
+                        rowBlankCount++;
+                        totalBlanks++;
+                    }
+                    // 使った候補はリストから削除
+                    potentialTargets.splice(randIdx, 1);
+                }
+
+
+                // ▼▼▼ 既存機能: 行すべてが空欄の場合の救済 (allowFullRowBlanks) ▼▼▼
+                // 行内のクイズ対象総数
+                const quizTargetCount = rowCells.filter(c => c.isValidTarget).length;
+                
+                // 「許可されていない」かつ「全部空欄」の場合
+                if (!allowFullRowBlanks && rowBlankCount === quizTargetCount && quizTargetCount > 0) {
+                     // 現在空欄になっているセルを探す
                      const blankIndices = rowCells
                         .map((cell, idx) => cell.isBlank ? idx : -1)
                         .filter(idx => idx !== -1);
+                     
                      if (blankIndices.length > 0) {
+                         // ランダムに1つ選んで見えるように戻す（救済）
                          const rescueIndex = blankIndices[Math.floor(Math.random() * blankIndices.length)];
                          rowCells[rescueIndex].isBlank = false;
                          totalBlanks--; 
                      }
                 }
+                
                 tableRows.push(rowCells);
             });
             
         } while (totalBlanks < 2 && attempts < 100);
-
+        
         // HTML描画
         tableRows.forEach((rowCells) => {
             const originalRIndex = rowCells[0].r;

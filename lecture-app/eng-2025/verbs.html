@@ -3,17 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>動詞の活用</title>
+    <title>動詞の活用練習（過去形・過去分詞）</title>
     <link rel="stylesheet" href="./style.css">
 </head>
 <body>
 
 
     <h1 id="pageTitle">読み込み中...</h1>
-    
-    <div class="navToIndex">
-        <!-- <a href="./index.html">← メニューに戻る</a> -->
-    </div>
 
     <div class="controls">
         <div class="level-group">
@@ -66,6 +62,10 @@
         Levelが上がると空欄が作られやすくなるように設定しています。   
     </div>
 
+    <div class="navToIndex">
+        <a href="./index.html">← メニューに戻る</a>
+    </div>
+
     <script src="./app.js"></script>
 
     <script>
@@ -73,13 +73,12 @@
 
         const quizData = {
             id: "irregular_verbs_v1", // localStorage保存用のユニークID
-            title: "動詞の活用（規則・不規則ミックス）",
-            allColHeaders: ["原形", "過去形", "過去分詞"],
+            title: "動詞の活用練習（過去形・過去分詞）",
+            allColHeaders: ["過去形", "過去分詞"],
             // 行数制限機能の有効化
             enableRowSelection: true,
-            defaultRowCount: 20, // デフォルトで20問表示
+            defaultRowCount: 10, // デフォルトで10問表示
             // ヘッダー定義
-            allColHeaders: ["原形", "過去形", "過去分詞"],
             rowHeaders: [
                 // --- 既存の不規則動詞 ---
                 "go（行く）", "see（見る）", "buy（買う）", "take（取る）", 
@@ -121,51 +120,62 @@
             // データ定義
             allData: [
                 // --- 既存の不規則動詞データ ---
-                ["go", "went", "gone"], ["see", "saw", "seen"], ["buy", "bought", "bought"], ["take", "took", "taken"],
-                ["come", "came", "come"], ["know", "knew", "known"], ["speak", "spoke", "spoken"], ["write", "wrote", "written"],
-                ["give", "gave", "given"], ["eat", "ate", "eaten"], ["make", "made", "made"], ["think", "thought", "thought"],
-                ["begin", "began", "begun"], ["run", "ran", "run"], ["break", "broke", "broken"], ["teach", "taught", "taught"],
-                ["catch", "caught", "caught"], ["choose", "chose", "chosen"], ["drink", "drank", "drunk"], ["drive", "drove", "driven"],
-                ["fall", "fell", "fallen"], ["fly", "flew", "flown"], ["grow", "grew", "grown"],
-                ["hear", "heard", "heard"], ["keep", "kept", "kept"], ["leave", "left", "left"], ["lose", "lost", "lost"],
-                ["meet", "met", "met"], ["pay", "paid", "paid"], ["ride", "rode", "ridden"], ["sing", "sang", "sung"],
-                ["sit", "sat", "sat"], ["sleep", "slept", "slept"], ["stand", "stood", "stood"], ["swim", "swam", "swum"],
-                ["tell", "told", "told"], ["understand", "understood", "understood"], ["wear", "wore", "worn"],
-                ["win", "won", "won"], ["bring", "brought", "brought"], ["build", "built", "built"], ["cut", "cut", "cut"],
-                ["do", "did", "done"], ["draw", "drew", "drawn"], ["feel", "felt", "felt"], ["find", "found", "found"],
-                ["have", "had", "had"], ["put", "put", "put"], ["read", "read", "read"],
-                ["say", "said", "said"], ["sell", "sold", "sold"], ["send", "sent", "sent"], 
+                ["went", "gone"], ["saw", "seen"], ["bought", "bought"], ["took", "taken"],
+                ["came", "come"], ["knew", "known"], ["spoke", "spoken"], ["wrote", "written"],
+                ["gave", "given"], ["ate", "eaten"], ["made", "made"], ["thought", "thought"],
+                ["began", "begun"], ["ran", "run"], ["broke", "broken"], ["taught", "taught"],
+                ["caught", "caught"], ["chose", "chosen"], ["drank", "drunk"], ["drove", "driven"],
+                ["fell", "fallen"], ["flew", "flown"], ["grew", "grown"],
+                ["heard", "heard"], ["kept", "kept"], ["left", "left"], ["lost", "lost"],
+                ["met", "met"], ["paid", "paid"], ["rode", "ridden"], ["sang", "sung"],
+                ["sat", "sat"], ["slept", "slept"], ["stood", "stood"], ["swam", "swum"],
+                ["told", "told"], ["understood", "understood"], ["wore", "worn"],
+                ["won", "won"], ["brought", "brought"], ["built", "built"], ["cut", "cut"],
+                ["did", "done"], ["drew", "drawn"], ["felt", "felt"], ["found", "found"],
+                ["had", "had"], ["put", "put"], ["read", "read"],
+                ["said", "said"], ["sold", "sold"], ["sent", "sent"], 
                 // --- 紛らわしい動詞 ---
-                ["lie", "lied", "lied"],     // 嘘をつく（規則：ieで終わる扱いでdのみ）
-                ["lie", "lay", "lain"],      // 横になる
-                ["lay", "laid", "laid"],     // 置く
-                ["cost", "cost", "cost"],    // 費用がかかる
+                ["lied", "lied"],     // 嘘をつく（規則：ieで終わる扱いでdのみ）
+                ["lay", "lain"],      // 横になる
+                ["laid", "laid"],     // 置く
+                ["cost", "cost"],    // 費用がかかる
                 // --- 【新規追加】複数正解がある動詞 ---
-                ["show",  "showed",         "shown/showed"],      // 過去分詞が2つ
-                ["prove", "proved",         "proved/proven"],     // 過去分詞が2つ
-                ["get",   "got",            "gotten/got"],        // 米:gotten 英:got
-                ["learn", "learned/learnt", "learned/learnt"],    // edとtの両方あり
-                ["dream", "dreamed/dreamt", "dreamed/dreamt"],    // edとtの両方あり
-                ["burn",  "burned/burnt",   "burned/burnt"],      // edとtの両方あり
-                ["smell", "smelled/smelt",  "smelled/smelt"],     // edとtの両方あり
-                ["spell", "spelled/spelt",  "spelled/spelt"],     // edとtの両方あり
-                ["spill", "spilled/spilt",  "spilled/spilt"],     // edとtの両方あり
+                [ "showed",         "shown/showed"],      // 過去分詞が2つ
+                ["proved",         "proved/proven"],     // 過去分詞が2つ
+                [  "got",            "gotten/got"],        // 米:gotten 英:got
+                ["learned/learnt", "learned/learnt"],    // edとtの両方あり
+                ["dreamed/dreamt", "dreamed/dreamt"],    // edとtの両方あり
+                [ "burned/burnt",   "burned/burnt"],      // edとtの両方あり
+                ["smelled/smelt",  "smelled/smelt"],     // edとtの両方あり
+                ["spelled/spelt",  "spelled/spelt"],     // edとtの両方あり
+                ["spilled/spilt",  "spilled/spilt"],     // edとtの両方あり
                 // --- 規則動詞パターン演習 ---
-                ["watch", "watched", "watched"], // そのままed
-                ["use",   "used",    "used"],    // eで終わる
-                ["hope",  "hoped",   "hoped"],   // eで終わる
-                ["try",   "tried",   "tried"],   // y -> ied
-                ["study", "studied", "studied"], // y -> ied
-                ["stop",  "stopped", "stopped"], // 重ねてed
-                ["drop",  "dropped", "dropped"], // 重ねてed
-                ["plan",  "planned", "planned"]  // 重ねてed
+                ["watched", "watched"], // そのままed
+                [  "used",    "used"],    // eで終わる
+                [ "hoped",   "hoped"],   // eで終わる
+                [  "tried",   "tried"],   // y -> ied
+                ["studied", "studied"], // y -> ied
+                [ "stopped", "stopped"], // 重ねてed
+                [ "dropped", "dropped"], // 重ねてed
+                [ "planned", "planned"]  // 重ねてed
             ],
-            // オプション: モード切替を隠す
+            // 【オプション】表示列数モード切替を隠す
             disableModeSelection: true,
-            // 各行の穴埋め対象セルが空欄だけになることを許可
-            allowFullRowBlanks: true,
+            // 【オプション】難易度ごとの穴埋め率 (0.0 ～ 1.0)
+            // Level 1でも半分(0.5)隠す、Level 3は9割(0.9)隠す、などの設定が可能
+            difficultyRates: { 1: 0.2, 2: 0.35, 3: 0.5 },
+
+            // 【機能1】各行の穴埋め対象セルが空欄だけになることを許可するか？
+            // Level 1: 禁止 (false) 
+            // Level 2, 3: 許可 (true)：デフォルト
+            allowFullRowBlanks: { 1: false, 2: true, 3: true },
+
+            // 【機能2】各行、最低でも何個は空欄にするか？
+            // Level 1, 2: 制限なし（確率次第で0個もありうる）
+            // Level 3: 必ず1個以上は空欄にする
+            minBlanks: { 1: 0, 2: 0, 3: 1 },
             // 穴埋めしない列を記述
-            noQuizColumns: [0]
+            noQuizColumns: []
         };
         
         app.init(quizData);
