@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>家事スケジューラー v4</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+        
+        /* 前回ここにあった input[type="date"] へのスタイル指定を削除しました。
+           これが原因でカレンダーの当たり判定が巨大化していました。
+        */
+
+        .date-wrapper { position: relative; }
+        .date-icon { pointer-events: none; }
+        
+        /* 設定画面が開いているときはスクロールさせない */
+        body.modal-open { overflow: hidden; }
+        /* ホーム画面のカレンダーボタン専用設定 */
+        .home-date-trigger::-webkit-calendar-picker-indicator {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 min-h-screen pb-20">
+
+    <header class="bg-white shadow p-4 flex justify-between items-center sticky top-0 z-10">
+        <h1 class="text-lg font-bold text-gray-700">家事ログ v4</h1>
+        <button onclick="toggleScreen('settings')" class="text-sm bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">⚙ 設定</button>
+    </header>
+
+    <div id="home-screen" class="p-4 max-w-md mx-auto">
+        
+        <div class="mb-6">
+            <h2 class="text-sm font-bold text-gray-500 mb-2 uppercase tracking-wide">推奨タスク</h2>
+            <div id="reminder-list" class="space-y-2">
+                </div>
+        </div>
+
+        <hr class="border-gray-300 my-6">
+
+        <div class="bg-white p-4 rounded-lg shadow">
+            <h2 class="text-sm font-bold text-gray-500 mb-3 uppercase tracking-wide">実施ログ登録</h2>
+            
+            <div class="mb-3">
+                <div class="flex gap-2 mb-2">
+                    <button type="button" onclick="setFormDate(0)" class="flex-1 bg-blue-100 text-blue-700 text-xs py-2 rounded hover:bg-blue-200">今日</button>
+                    <button type="button" onclick="setFormDate(-1)" class="flex-1 bg-gray-100 text-gray-700 text-xs py-2 rounded hover:bg-gray-200">昨日</button>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="text" id="log-date-text" placeholder="YYYYMMDD" class="flex-1 border p-2 rounded text-lg font-mono" onblur="normalizeDateInput(this)">
+                    
+                    <div class="date-wrapper relative w-10 h-10 bg-gray-100 rounded flex items-center justify-center cursor-pointer hover:bg-gray-200 overflow-hidden">
+                        <span class="date-icon text-xl">📅</span>
+                        <input type="date" id="log-date-picker" class="home-date-trigger opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="syncTextFromPicker(this)">                    </div>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <input list="task-options" id="log-task-name" autocomplete="off" placeholder="項目を選択または入力" class="w-full border p-2 rounded text-base">                <datalist id="task-options"></datalist>
+            </div>
+
+            <button onclick="registerLog()" class="w-full bg-blue-600 text-white py-3 rounded font-bold shadow hover:bg-blue-700 active:transform active:scale-95 transition">記録する</button>
+        </div>
+    </div>
+
+    <div id="settings-screen" class="hidden p-4 max-w-md mx-auto bg-gray-50 h-screen fixed top-0 left-0 w-full z-20 overflow-y-auto overscroll-none">        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-bold">設定</h2>
+            <button onclick="toggleScreen('home')" class="text-blue-600 font-bold">完了</button>
+        </div>
+
+        <div class="bg-yellow-50 border border-yellow-200 p-4 rounded shadow mb-6">
+            <h3 class="font-bold text-yellow-800 mb-2 text-sm">💾 データ管理 (バックアップ)</h3>
+            <div class="flex gap-2">
+                <button onclick="exportData()" class="flex-1 bg-white border border-gray-300 text-gray-700 py-2 rounded text-sm hover:bg-gray-50">↓ 書き出し</button>
+                <label class="flex-1 bg-white border border-gray-300 text-gray-700 py-2 rounded text-sm hover:bg-gray-50 text-center cursor-pointer">
+                    ↑ 読み込み
+                    <input type="file" id="import-file" accept=".json" class="hidden" onchange="importData(this)">
+                </label>
+            </div>
+        </div>
+
+        <div class="bg-white p-4 rounded shadow mb-6">
+            <h3 class="font-bold text-gray-700 mb-2" id="edit-title">新規項目登録</h3>
+            <input type="hidden" id="edit-id">
+            
+            <div class="grid grid-cols-1 gap-3">
+                <input type="text" id="edit-name" placeholder="項目名 (例: 換気扇掃除)" class="border p-2 rounded w-full">
+                <div class="flex gap-2">
+                    <div class="flex-1">
+                        <label class="text-xs text-gray-500 block">期間(日)</label>
+                        <input type="number" id="edit-period" placeholder="90" class="border p-2 rounded w-full">
+                    </div>
+                    <div class="w-16">
+                        <label class="text-xs text-gray-500 block">色</label>
+                        <input type="color" id="edit-color" value="#3B82F6" class="h-10 w-full border rounded cursor-pointer">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500 block">最終実行日</label>
+                    <input type="date" id="edit-last-date" class="border p-2 rounded w-full">
+                </div>
+                <div class="flex gap-2 mt-2">
+                    <button onclick="saveItem()" class="flex-1 bg-green-600 text-white py-2 rounded font-bold">保存</button>
+                    <button onclick="clearEditForm()" class="px-4 py-2 bg-gray-200 rounded text-gray-600">クリア</button>
+                </div>
+            </div>
+        </div>
+
+        <h3 class="font-bold text-gray-600 mb-2">登録済み項目</h3>
+        <div id="settings-list" class="space-y-3 pb-32"></div>
+        
+        <div class="mt-8 pt-8 border-t">
+            <button onclick="resetAllData()" class="text-xs text-red-400 underline">全データを削除してリセット</button>
+        </div>
+    </div>
+
+<script>
+    // --- 日付ユーティリティ ---
+    function getTodayYMD() {
+        const d = new Date();
+        return toYMD(d);
+    }
+    function toYMD(dateObj) {
+        const y = dateObj.getFullYear();
+        const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const d = String(dateObj.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+    function getDiffDays(ymd1, ymd2) {
+        if (!ymd1 || !ymd2) return 0;
+        const d1 = new Date(ymd1);
+        const d2 = new Date(ymd2);
+        const diffTime = d1 - d2; 
+        return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    }
+
+    // --- データ管理 ---
+    let items = [];
+
+    window.onload = () => {
+        loadData();
+        setFormDate(0);
+        renderAll();
+    };
+
+    function loadData() {
+        try {
+            const raw = localStorage.getItem('housework_items_v3');
+            if (raw) {
+                items = JSON.parse(raw);
+                if (!Array.isArray(items)) items = [];
+            }
+        } catch (e) {
+            console.error(e);
+            items = [];
+        }
+    }
+
+    function saveToStorage() {
+        localStorage.setItem('housework_items_v3', JSON.stringify(items));
+        renderAll();
+    }
+
+    function renderAll() {
+        renderReminders();
+        renderDatalist();
+        renderSettingsList();
+    }
+
+    // --- UI操作 ---
+    function setFormDate(offset) {
+        const d = new Date();
+        d.setDate(d.getDate() + offset);
+        const ymd = toYMD(d);
+        document.getElementById('log-date-text').value = ymd;
+        document.getElementById('log-date-picker').value = ymd;
+    }
+
+    function syncTextFromPicker(picker) {
+        document.getElementById('log-date-text').value = picker.value;
+    }
+
+    function normalizeDateInput(input) {
+        let val = input.value.trim();
+        if (/^\d{8}$/.test(val)) {
+            val = `${val.slice(0,4)}-${val.slice(4,6)}-${val.slice(6,8)}`;
+        } else if (val.includes('/')) {
+            val = val.replace(/\//g, '-');
+        }
+        const d = new Date(val);
+        if (!isNaN(d.getTime())) {
+            if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(val)) {
+                 const parts = val.split('-');
+                 val = `${parts[0]}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}`;
+            }
+            input.value = val;
+            document.getElementById('log-date-picker').value = val;
+        }
+    }
+
+    // --- レンダリング ---
+    function renderReminders() {
+        const list = document.getElementById('reminder-list');
+        list.innerHTML = '';
+        const todayYMD = getTodayYMD();
+        let hasReminder = false;
+
+        const sorted = [...items].sort((a, b) => {
+            if (!a.lastDate) return -1;
+            if (!b.lastDate) return 1;
+            const overA = getDiffDays(todayYMD, a.lastDate) - a.period;
+            const overB = getDiffDays(todayYMD, b.lastDate) - b.period;
+            return overB - overA;
+        });
+
+        sorted.forEach(item => {
+            let isDue = false;
+            let msg = "";
+            if (!item.lastDate) {
+                isDue = true;
+                msg = `<span class="text-green-600 font-bold">未実施</span>`;
+            } else {
+                const passedDays = getDiffDays(todayYMD, item.lastDate);
+                if (passedDays >= item.period) {
+                    isDue = true;
+                    msg = `前回: ${item.lastDate} (${passedDays}日前)`;
+                }
+            }
+
+            if (isDue) {
+                hasReminder = true;
+                const div = document.createElement('div');
+                div.className = "bg-white p-3 rounded shadow-sm border-l-4 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition";
+                div.style.borderLeftColor = item.color;
+                div.innerHTML = `<div><div class="font-bold text-gray-800">${item.name}</div><div class="text-xs text-gray-500">${msg}</div></div>`;
+                div.onclick = () => {
+                    document.getElementById('log-task-name').value = item.name;
+                    toggleScreen('home');
+                    // フォームを画面中央へ
+                    const form = document.querySelector('.bg-white.p-4.rounded-lg.shadow');
+                    form.scrollIntoView({behavior: "smooth", block: "center"});
+                };
+                list.appendChild(div);
+            }
+        });
+
+        if (!hasReminder) {
+            list.innerHTML = '<div class="text-center py-4 text-gray-400 text-sm">推奨タスクはありません 🎉</div>';
+        }
+    }
+
+    function renderDatalist() {
+        const dl = document.getElementById('task-options');
+        dl.innerHTML = '';
+        items.forEach(i => {
+            const op = document.createElement('option');
+            op.value = i.name;
+            dl.appendChild(op);
+        });
+    }
+
+    function renderSettingsList() {
+        const list = document.getElementById('settings-list');
+        list.innerHTML = '';
+        items.forEach(item => {
+            const div = document.createElement('div');
+            div.className = "bg-white p-3 rounded border flex justify-between items-center";
+            div.innerHTML = `
+                <div class="flex items-center gap-2 overflow-hidden">
+                    <div class="w-4 h-4 rounded-full flex-shrink-0" style="background:${item.color}"></div>
+                    <div class="min-w-0">
+                        <div class="font-bold truncate">${item.name}</div>
+                        <div class="text-xs text-gray-500">周期: ${item.period}日 / 最終: ${item.lastDate || '-'}</div>
+                    </div>
+                </div>
+                <div class="flex gap-2 flex-shrink-0">
+                    <button onclick="editItem('${item.id}')" class="text-blue-600 text-xs border border-blue-200 px-2 py-1 rounded">編集</button>
+                    <button onclick="deleteItem('${item.id}')" class="text-red-600 text-xs border border-red-200 px-2 py-1 rounded">削除</button>
+                </div>
+            `;
+            list.appendChild(div);
+        });
+    }
+
+    // --- アクション ---
+    function registerLog() {
+        const nameInput = document.getElementById('log-task-name');
+        const dateInput = document.getElementById('log-date-text');
+        const name = nameInput.value.trim();
+        const dateStr = dateInput.value;
+
+        if (!name || !dateStr) { alert("項目名と日付を入力してください"); return; }
+
+        const target = items.find(i => i.name === name);
+        if (target) {
+            target.lastDate = dateStr;
+            alert(`「${name}」を記録しました！`);
+        } else {
+            if (!confirm(`「${name}」はリストにありません。\n新規項目として追加しますか？`)) return;
+            items.push({ id: Date.now().toString(), name: name, period: 30, color: '#9CA3AF', lastDate: dateStr });
+            alert(`「${name}」を新規登録して記録しました！`);
+        }
+        saveToStorage();
+        nameInput.value = '';
+    }
+
+    function saveItem() {
+        const id = document.getElementById('edit-id').value;
+        const name = document.getElementById('edit-name').value.trim();
+        const period = document.getElementById('edit-period').value;
+        const color = document.getElementById('edit-color').value;
+        const lastDate = document.getElementById('edit-last-date').value;
+
+        if (!name || !period) { alert("名前と期間は必須です"); return; }
+
+        const newItemData = {
+            id: id || Date.now().toString(),
+            name: name,
+            period: parseInt(period),
+            color: color,
+            lastDate: lastDate
+        };
+
+        if (id) {
+            const idx = items.findIndex(i => i.id === id);
+            if (idx > -1) items[idx] = newItemData;
+        } else {
+            items.push(newItemData);
+        }
+        saveToStorage();
+        clearEditForm();
+        alert("設定を保存しました");
+    }
+
+    function editItem(id) {
+        const item = items.find(i => i.id === id);
+        if (!item) return;
+        document.getElementById('edit-title').textContent = "項目を編集";
+        document.getElementById('edit-id').value = item.id;
+        document.getElementById('edit-name').value = item.name;
+        document.getElementById('edit-period').value = item.period;
+        document.getElementById('edit-color').value = item.color;
+        document.getElementById('edit-last-date').value = item.lastDate;
+        document.getElementById('settings-screen').scrollIntoView();
+    }
+
+    function deleteItem(id) {
+        if (!confirm("本当に削除しますか？")) return;
+        items = items.filter(i => i.id !== id);
+        saveToStorage();
+        if (document.getElementById('edit-id').value === id) clearEditForm();
+    }
+
+    function clearEditForm() {
+        document.getElementById('edit-title').textContent = "新規項目登録";
+        document.getElementById('edit-id').value = "";
+        document.getElementById('edit-name').value = "";
+        document.getElementById('edit-period').value = "";
+        document.getElementById('edit-color').value = "#3B82F6";
+        document.getElementById('edit-last-date').value = "";
+    }
+
+    function exportData() {
+        const dataStr = JSON.stringify(items, null, 2);
+        const blob = new Blob([dataStr], {type: "application/json"});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `housework_backup_${getTodayYMD()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    function importData(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const json = JSON.parse(e.target.result);
+                if (Array.isArray(json)) {
+                    if(confirm("現在のデータを消去して、ファイルを読み込みますか？")) {
+                        items = json;
+                        saveToStorage();
+                        alert("復元完了しました！");
+                    }
+                } else { alert("データ形式が違います"); }
+            } catch(err) { alert("ファイル読み込みエラー"); }
+            input.value = '';
+        };
+        reader.readAsText(file);
+    }
+
+    function resetAllData() {
+        if(confirm("【警告】すべてのデータを完全に削除します。よろしいですか？")) {
+            items = [];
+            saveToStorage();
+            alert("リセットしました");
+        }
+    }
+
+    // --- 画面切り替え ---
+    function toggleScreen(name) {
+        const settings = document.getElementById('settings-screen');
+        const home = document.getElementById('home-screen');
+        
+        if (name === 'settings') {
+            // 【追加】すでに設定画面が開いていたら閉じる（ホームに戻る）
+            if (!settings.classList.contains('hidden')) {
+                settings.classList.add('hidden');
+                home.classList.remove('hidden');
+                document.body.classList.remove('modal-open');
+                return;
+            }
+
+            // 設定画面を開く
+            settings.classList.remove('hidden');
+            home.classList.add('hidden');
+            document.body.classList.add('modal-open');
+            window.scrollTo(0,0);
+        } else {
+            // ホーム画面に戻る
+            settings.classList.add('hidden');
+            home.classList.remove('hidden');
+            document.body.classList.remove('modal-open');
+        }
+    }
+
+</script>
+</body>
+</html>
